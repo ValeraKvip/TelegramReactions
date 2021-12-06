@@ -45,6 +45,10 @@ public class AccountInstance {
         return ConnectionsManager.getInstance(currentAccount);
     }
 
+    public ReactionsController getReactionsController() {
+        return ReactionsController.getInstance(currentAccount);
+    }
+
     public NotificationsController getNotificationsController() {
         return NotificationsController.getInstance(currentAccount);
     }

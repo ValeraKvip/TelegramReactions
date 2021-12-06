@@ -44,6 +44,7 @@ import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.MessagesStorage;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
+import org.telegram.messenger.ReactionsController;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.ActionBarMenu;
@@ -113,6 +114,7 @@ public class ChatEditActivity extends BaseFragment implements ImageUpdater.Image
     private TextCell membersCell;
     private TextCell memberRequestsCell;
     private TextCell inviteLinksCell;
+    private TextCell reactionsCell;
     private TextCell adminCell;
     private TextCell blockCell;
     private TextCell logCell;
@@ -848,11 +850,23 @@ public class ChatEditActivity extends BaseFragment implements ImageUpdater.Image
             logCell.setOnClickListener(v -> presentFragment(new ChannelAdminLogActivity(currentChat)));
         }
 
+        reactionsCell = new TextCell(context);
+        reactionsCell.setBackgroundDrawable(Theme.getSelectorDrawable(false));
+        reactionsCell.setOnClickListener(v -> {
+            ManageReactionsActivity fragment = new ManageReactionsActivity(chatId);
+            fragment.setInfo(info);
+            presentFragment(fragment);
+        });
+
         if (!isChannel && !currentChat.gigagroup) {
             infoContainer.addView(blockCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         }
         if (!isChannel) {
             infoContainer.addView(inviteLinksCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        }
+
+        if (reactionsCell != null && currentChat != null && (isChannel || currentChat.megagroup || currentChat.gigagroup)) {
+            infoContainer.addView(reactionsCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         }
         infoContainer.addView(adminCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         infoContainer.addView(membersCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
@@ -1288,6 +1302,20 @@ public class ChatEditActivity extends BaseFragment implements ImageUpdater.Image
             logCell.setVisibility(!currentChat.megagroup || currentChat.gigagroup || info != null && info.participants_count > 200 ? View.VISIBLE : View.GONE);
         }
 
+        if (reactionsCell != null) {
+            reactionsCell.setVisibility(View.VISIBLE);
+            int total_reactions = ReactionsController.getInstance(currentAccount).totalCount();
+            total_reactions = total_reactions == 0 ? 11 : total_reactions;
+
+            int available_reactions = info != null ? info.available_reactions.size() : total_reactions;
+            if(available_reactions == 0){
+                reactionsCell.setTextAndValueAndIcon(LocaleController.getString("Reactions", R.string.Reactions),
+                        LocaleController.getString("Off", R.string.Off), R.drawable.actions_reactions, true);
+            }else{
+                reactionsCell.setTextAndValueAndIcon(LocaleController.getString("Reactions", R.string.Reactions),
+                        String.format("%d/%d", available_reactions, total_reactions), R.drawable.actions_reactions, true);
+            }
+        }
         if (linkedCell != null) {
             if (info == null || !isChannel && info.linked_chat_id == 0) {
                 linkedCell.setVisibility(View.GONE);

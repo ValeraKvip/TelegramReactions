@@ -400,6 +400,7 @@ public class MessageObject {
         public ArrayList<GroupedMessagePosition> posArray = new ArrayList<>();
         public HashMap<MessageObject, GroupedMessagePosition> positions = new HashMap<>();
         public boolean isDocuments;
+        public int keyboardHeight;
 
         private int maxSizeWidth = 800;
 

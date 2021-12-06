@@ -34,6 +34,7 @@ public class FlickerLoadingView extends View {
     public final static int MESSAGE_SEEN_TYPE = 13;
     public final static int CHAT_THEMES_TYPE = 14;
     public final static int MEMBER_REQUESTS_TYPE = 15;
+    public final static int REACTION_TYPE = 16;
 
     private int gradientWidth;
     private LinearGradient gradient;
@@ -46,6 +47,7 @@ public class FlickerLoadingView extends View {
     private int color0;
     private int color1;
     private int skipDrawItemsCount;
+    private int randomLen;
 
     private boolean showDate = true;
     private boolean useHeaderOffset;
@@ -492,6 +494,33 @@ public class FlickerLoadingView extends View {
                     break;
                 }
             }
+        } else if (getViewType() == REACTION_TYPE) {
+            int count = 0;
+
+            while (h <= getMeasuredHeight()) {
+                canvas.drawCircle(checkRtl(paddingLeft +AndroidUtilities.dp(29)),h+ getHeight()/2f,AndroidUtilities.dp(16),paint);
+                canvas.drawCircle( checkRtl(paddingLeft + getWidth() - AndroidUtilities.dp(17)),h+getHeight()/2f,AndroidUtilities.dp(8),paint);
+
+                int w = randomLen;
+                int maxW = (getMeasuredWidth() - AndroidUtilities.dp(96) - AndroidUtilities.dp(25) - w*2)/2;
+
+                rectF.set(paddingLeft + AndroidUtilities.dp(56),h+getHeight()/2f - AndroidUtilities.dp(4),
+                        paddingLeft +AndroidUtilities.dp(56) + maxW ,h+getHeight()/2f + AndroidUtilities.dp(4));
+                checkRtl(rectF);
+                canvas.drawRoundRect(rectF,25,25, paint);
+
+                rectF.set(paddingLeft +AndroidUtilities.dp(60) + maxW ,h+getHeight()/2f - AndroidUtilities.dp(4),
+                        paddingLeft + AndroidUtilities.dp(60) + maxW*2,h+getHeight()/2f + AndroidUtilities.dp(4));
+                checkRtl(rectF);
+                canvas.drawRoundRect(rectF,25,25, paint);
+
+
+                h += getCellHeight(getMeasuredWidth());
+                count++;
+                if (isSingleCell && count >= itemsCount) {
+                    break;
+                }
+            }
         }
         invalidate();
     }
@@ -596,6 +625,9 @@ public class FlickerLoadingView extends View {
         } else if (getViewType() == MEMBER_REQUESTS_TYPE) {
             return AndroidUtilities.dp(107);
         }
+        else if (getViewType() == REACTION_TYPE) {
+            return AndroidUtilities.dp(44);
+        }
         return 0;
     }
 
@@ -642,5 +674,9 @@ public class FlickerLoadingView extends View {
 
     public Paint getPaint() {
         return paint;
+    }
+
+    public void setRandomLen(int randomLen) {
+        this.randomLen = randomLen;
     }
 }

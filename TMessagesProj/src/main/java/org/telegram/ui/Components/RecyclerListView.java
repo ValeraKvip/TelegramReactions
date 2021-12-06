@@ -27,6 +27,7 @@ import android.os.SystemClock;
 import android.text.Layout;
 import android.text.StaticLayout;
 import android.text.TextPaint;
+import android.util.Log;
 import android.util.SparseIntArray;
 import android.util.StateSet;
 import android.view.GestureDetector;
@@ -61,6 +62,7 @@ public class RecyclerListView extends RecyclerView {
 
     private OnItemClickListener onItemClickListener;
     private OnItemClickListenerExtended onItemClickListenerExtended;
+    private OnItemDoubleClickListenerExtended onItemDoubleClickListenerExtended;
     private OnItemLongClickListener onItemLongClickListener;
     private OnItemLongClickListenerExtended onItemLongClickListenerExtended;
     private boolean longPressCalled;
@@ -157,6 +159,10 @@ public class RecyclerListView extends RecyclerView {
 
     public interface OnItemClickListenerExtended {
         void onItemClick(View view, int position, float x, float y);
+    }
+
+    public interface OnItemDoubleClickListenerExtended {
+        void onItemDoubleClick(View view, int position, float x, float y);
     }
 
     public interface OnItemLongClickListener {
@@ -720,11 +726,19 @@ public class RecyclerListView extends RecyclerView {
     }
 
     private class RecyclerListViewItemClickListener implements OnItemTouchListener {
+        private boolean ignoreUp;
+        private long lastUpTime;
 
         public RecyclerListViewItemClickListener(Context context) {
             gestureDetector = new GestureDetector(context, new GestureDetector.OnGestureListener() {
                 @Override
                 public boolean onSingleTapUp(MotionEvent e) {
+                    if(ignoreUp ){
+                        ignoreUp = false;
+                        return  true;
+                    }
+
+                    lastUpTime = System.currentTimeMillis();
                     if (currentChildView != null && (onItemClickListener != null || onItemClickListenerExtended != null)) {
                         final float x = e.getX();
                         final float y = e.getY();
@@ -797,6 +811,18 @@ public class RecyclerListView extends RecyclerView {
 
                 @Override
                 public boolean onDown(MotionEvent e) {
+                    if (currentChildView == null || currentChildPosition == -1) {
+                        return false;
+                    }
+
+                    if(onItemDoubleClickListenerExtended != null){
+                        if(System.currentTimeMillis() - lastUpTime < ViewConfiguration.getDoubleTapTimeout()){
+                            lastUpTime = 0;
+                            onItemDoubleClickListenerExtended.onItemDoubleClick(currentChildView, currentChildPosition, e.getX() - currentChildView.getX(), e.getY() - currentChildView.getY());
+                            ignoreUp = true;
+                            return true;
+                        }
+                    }
                     return false;
                 }
 
@@ -1430,6 +1456,10 @@ public class RecyclerListView extends RecyclerView {
 
     public void setOnItemClickListener(OnItemClickListenerExtended listener) {
         onItemClickListenerExtended = listener;
+    }
+
+    public void setOnItemDoubleClickListener(OnItemDoubleClickListenerExtended listener) {
+        onItemDoubleClickListenerExtended = listener;
     }
 
     public OnItemClickListener getOnItemClickListener() {

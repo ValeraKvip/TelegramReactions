@@ -26,6 +26,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.content.res.AssetFileDescriptor;
 import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Color;
@@ -531,6 +532,45 @@ public class AndroidUtilities {
         }
         AndroidUtilities.statusBarHeight = getStatusBarHeight(context);
     }
+
+    public static boolean isLandscape(Context context) {
+        return AndroidUtilities.displaySize.x > AndroidUtilities.displaySize.y;
+    }
+
+    public static int getNavigationBarHeight(Context context, int orientation) {
+        Resources resources = context.getResources();
+
+        int id = resources.getIdentifier(
+                orientation == Configuration.ORIENTATION_PORTRAIT ? "navigation_bar_height" : "navigation_bar_height_landscape",
+                "dimen", "android");
+        if (id > 0) {
+            return resources.getDimensionPixelSize(id);
+        }
+        return 0;
+    }
+
+    public static Point getRealLocationOnScreen(Context context, View view) {
+        int[] outLocation = {0,0};
+        view.getLocationOnScreen(outLocation);
+        int x = outLocation[0];
+        int y = outLocation[1];
+
+        final Display display = ((WindowManager)context.getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
+
+        switch (display.getRotation()) {
+            case Surface.ROTATION_90:
+                x -=  getStatusBarHeight(context);
+                break;
+
+            case Surface.ROTATION_270:
+                x -=  getNavigationBarHeight(context,Configuration.ORIENTATION_LANDSCAPE);
+                break;
+        }
+        y -= getStatusBarHeight(context);
+
+        return new Point(x,y);
+    }
+
 
     public static int getStatusBarHeight(Context context) {
         int resourceId = context.getResources().getIdentifier("status_bar_height", "dimen", "android");
@@ -1634,6 +1674,10 @@ public class AndroidUtilities {
             return 0;
         }
         return density * value;
+    }
+
+    public static float convertPxToDp(float px, Context context){
+        return px / ((float) context.getResources().getDisplayMetrics().densityDpi / DisplayMetrics.DENSITY_DEFAULT);
     }
 
     public static void checkDisplaySize(Context context, Configuration newConfiguration) {

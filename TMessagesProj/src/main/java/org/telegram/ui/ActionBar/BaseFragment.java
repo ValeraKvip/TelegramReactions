@@ -42,6 +42,7 @@ import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.MessagesStorage;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.NotificationsController;
+import org.telegram.messenger.ReactionsController;
 import org.telegram.messenger.SecretChatHelper;
 import org.telegram.messenger.SendMessagesHelper;
 import org.telegram.messenger.UserConfig;
@@ -568,6 +569,10 @@ public abstract class BaseFragment {
 
     public ConnectionsManager getConnectionsManager() {
         return getAccountInstance().getConnectionsManager();
+    }
+
+    public ReactionsController getReactionsController() {
+        return getAccountInstance().getReactionsController();
     }
 
     public LocationController getLocationController() {

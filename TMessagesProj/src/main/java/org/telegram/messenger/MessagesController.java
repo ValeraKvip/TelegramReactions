@@ -131,8 +131,10 @@ public class MessagesController extends BaseController implements NotificationCe
 
     private LongSparseArray<ArrayList<Integer>> channelViewsToSend = new LongSparseArray<>();
     private LongSparseArray<SparseArray<MessageObject>> pollsToCheck = new LongSparseArray<>();
+    private LongSparseArray<ArrayList<Integer>> reactionsToCheck = new LongSparseArray<>();
     private int pollsToCheckSize;
     private long lastViewsCheckTime;
+    private long lastReactionsCheckTime;
 
     public ArrayList<DialogFilter> dialogFilters = new ArrayList<>();
     public SparseArray<DialogFilter> dialogFiltersById = new SparseArray<>();
@@ -469,16 +471,16 @@ public class MessagesController extends BaseController implements NotificationCe
         public TLRPC.SendMessageAction action;
     }
 
-    public static int DIALOG_FILTER_FLAG_CONTACTS           = 0x00000001;
-    public static int DIALOG_FILTER_FLAG_NON_CONTACTS       = 0x00000002;
-    public static int DIALOG_FILTER_FLAG_GROUPS             = 0x00000004;
-    public static int DIALOG_FILTER_FLAG_CHANNELS           = 0x00000008;
-    public static int DIALOG_FILTER_FLAG_BOTS               = 0x00000010;
-    public static int DIALOG_FILTER_FLAG_EXCLUDE_MUTED      = 0x00000020;
-    public static int DIALOG_FILTER_FLAG_EXCLUDE_READ       = 0x00000040;
-    public static int DIALOG_FILTER_FLAG_EXCLUDE_ARCHIVED   = 0x00000080;
-    public static int DIALOG_FILTER_FLAG_ONLY_ARCHIVED      = 0x00000100;
-    public static int DIALOG_FILTER_FLAG_ALL_CHATS          = DIALOG_FILTER_FLAG_CONTACTS | DIALOG_FILTER_FLAG_NON_CONTACTS | DIALOG_FILTER_FLAG_GROUPS | DIALOG_FILTER_FLAG_CHANNELS | DIALOG_FILTER_FLAG_BOTS;
+    public static int DIALOG_FILTER_FLAG_CONTACTS = 0x00000001;
+    public static int DIALOG_FILTER_FLAG_NON_CONTACTS = 0x00000002;
+    public static int DIALOG_FILTER_FLAG_GROUPS = 0x00000004;
+    public static int DIALOG_FILTER_FLAG_CHANNELS = 0x00000008;
+    public static int DIALOG_FILTER_FLAG_BOTS = 0x00000010;
+    public static int DIALOG_FILTER_FLAG_EXCLUDE_MUTED = 0x00000020;
+    public static int DIALOG_FILTER_FLAG_EXCLUDE_READ = 0x00000040;
+    public static int DIALOG_FILTER_FLAG_EXCLUDE_ARCHIVED = 0x00000080;
+    public static int DIALOG_FILTER_FLAG_ONLY_ARCHIVED = 0x00000100;
+    public static int DIALOG_FILTER_FLAG_ALL_CHATS = DIALOG_FILTER_FLAG_CONTACTS | DIALOG_FILTER_FLAG_NON_CONTACTS | DIALOG_FILTER_FLAG_GROUPS | DIALOG_FILTER_FLAG_CHANNELS | DIALOG_FILTER_FLAG_BOTS;
 
     public static class DialogFilter {
         public int id;
@@ -2569,6 +2571,7 @@ public class MessagesController extends BaseController implements NotificationCe
         migratedChats.clear();
         channelViewsToSend.clear();
         pollsToCheck.clear();
+        reactionsToCheck.clear();
         pollsToCheckSize = 0;
         dialogsServerOnly.clear();
         dialogsForward.clear();
@@ -5310,6 +5313,31 @@ public class MessagesController extends BaseController implements NotificationCe
                 }
             }
         }
+
+        if (Math.abs(System.currentTimeMillis() - lastReactionsCheckTime) >= 15000) {
+            lastReactionsCheckTime = System.currentTimeMillis();
+            for (int a = 0; a < reactionsToCheck.size(); a++) {
+                long key = reactionsToCheck.keyAt(a);
+                TLRPC.TL_messages_getMessagesReactions req = new TLRPC.TL_messages_getMessagesReactions();
+                req.id = reactionsToCheck.get(key);
+                if(req.id == null || req.id.size() == 0){
+                    continue;
+                }
+
+                req.peer = getInputPeer(key);
+                getConnectionsManager().sendRequest(req, (response, error) -> {
+                    if (error == null) {
+                        if (response != null) {
+                            MessagesController.getInstance(currentAccount).processUpdates((TLRPC.Updates) response, false);
+                        }
+                    }
+                    else{
+                        FileLog.e(error.text);
+                    }
+                });
+            }
+        }
+
         int currentServerTime = getConnectionsManager().getCurrentTime();
         if (Math.abs(System.currentTimeMillis() - lastViewsCheckTime) >= 5000) {
             lastViewsCheckTime = System.currentTimeMillis();
@@ -7888,7 +7916,7 @@ public class MessagesController extends BaseController implements NotificationCe
                     allDialogs.add(dialog);
                 }
                 sortDialogs(migrate ? chatsDict : null);
-                
+
                 putAllNeededDraftDialogs();
 
                 if (loadType != DIALOGS_LOAD_TYPE_CHANNEL && loadType != DIALOGS_LOAD_TYPE_UNKNOWN) {
@@ -8465,6 +8493,16 @@ public class MessagesController extends BaseController implements NotificationCe
                 ids.add(id);
             }
         });
+    }
+
+    public void addReactionsToQueue(long dialogId, ArrayList<Integer> visibleObjects) {
+        ArrayList<Integer> array = reactionsToCheck.get(dialogId);
+        if (array == null) {
+            array = new ArrayList<>(visibleObjects.size());
+            reactionsToCheck.put(dialogId, array);
+        }
+        array.clear();
+        array.addAll(visibleObjects);
     }
 
     public void addToPollsQueue(long dialogId, ArrayList<MessageObject> visibleObjects) {
